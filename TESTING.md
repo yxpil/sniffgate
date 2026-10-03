@@ -1,3 +1,12 @@
+# sniffgate 测试说明
+
+- 测试完成：是（2026-10-04）
+- 测试日期：2026-10-04
+- 测试内容：单元测试 13 + 集成 tests/integration.rs(3)；覆盖 TCP/UDP 转发、故障切换、UDP 会话重绑、配置热加载、控制口命令；注入：控制口垃圾 JSON/命令注入载荷/不存在节点/超大输入不崩、不改变转发行为；本仓库无插件/钩子机制。
+- 运行命令：`cargo test`
+- 测试框架：Rust `#[cfg(test)]` + 真实进程 + 本地 TCP/UDP 回显后端
+- 模型：豆包（Doubao）生成
+
 # 测试说明（sniffgate）
 
 sniffgate 是 TCP/UDP 故障切换网关。测试分两层：`src/main.rs` 内 `#[cfg(test)]`
