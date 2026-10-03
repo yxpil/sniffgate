@@ -1,0 +1,47 @@
+[Unit]
+Description=sniffgate 多节点嗅探主备热切换网关 (TCP/UDP 统一入口)
+Documentation=https://github.com/yxpil/sniffgate
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 若不需要监听 1024 以下端口，可改为 nobody/专用账号
+User=sniffgate
+Group=sniffgate
+WorkingDirectory=/opt/sniffgate
+ExecStart=/opt/sniffgate/sniffgate --config /opt/sniffgate/config.toml
+# 配置文件由 sniffgate 自己监听 mtime 热加载，因此这里不用 Restart 覆盖配置改动
+Restart=always
+RestartSec=1
+# 收到 SIGTERM 时优雅退出（关闭在途连接，最长 shutdown_grace_ms）
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# 监听 1024 以下端口时启用（也可改用 setcap cap_net_bind_service=+ep）
+# AmbientCapabilities=CAP_NET_BIND_SERVICE
+# CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# ---- 安全加固 ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadOnlyPaths=/opt/sniffgate
+# 需要写日志文件时才放开
+# ReadWritePaths=/opt/sniffgate/logs
+
+# ---- 资源与日志 ----
+LimitNOFILE=1048576
+# 高 PPS 场景可调整 UDP 收包缓冲（需内核允许）
+# Environment=SNIFFGATE_UDP_BUFFER=8388608
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sniffgate
+
+[Install]
+WantedBy=multi-user.target

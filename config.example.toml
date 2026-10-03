@@ -1,0 +1,91 @@
+# =============================================================================
+# sniffgate 配置示例
+#
+#   对外：所有客户端只访问下面的 [[listeners]]（统一入口，TCP/UDP 各一个或多个）
+#   对内：真正干活的是 [[nodes]] 里的多个后端节点，priority 越大越优先（主），
+#         其余为备；主节点被嗅探判定不可用后，秒级热切换到备用节点。
+#   改完本文件保存即生效（默认 1 秒轮询一次文件变化，无需重启进程）。
+# =============================================================================
+
+[global]
+# 日志级别：trace | debug | info | warn | error
+log_level = "info"
+# 路由策略：
+#   priority    —— 主备模式（默认，priority 最大且健康的节点为主）
+#   round_robin —— 健康节点之间轮询（多活）
+#   weighted    —— 按 weight 加权轮询（多活）
+strategy = "priority"
+# 运维控制口（行式 JSON / 文本命令，netcat 可直接连）；填 "" 表示关闭
+admin_listen = "127.0.0.1:9100"
+# 配置文件热加载轮询间隔（毫秒）
+config_poll_interval_ms = 1000
+# 健康嗅探间隔 / 单次探测超时（毫秒），节点可用 probe_interval_ms 覆盖间隔
+probe_interval_ms = 1000
+probe_timeout_ms = 800
+# 与后端建立连接的超时（毫秒）
+connect_timeout_ms = 3000
+# 连续 N 次探测失败 → 判定节点不可用；连续 N 次成功 → 判定恢复
+failure_threshold = 3
+success_threshold = 2
+# 单次请求最多尝试多少个后端节点（1 = 只试当前主节点）
+connect_retry = 3
+# 被动嗅探：窗口内连接失败达到阈值，立即摘除该节点（不必等主动探测）
+passive_eject_threshold = 3
+passive_eject_window_ms = 5000
+# 热切换后，旧主节点上已有 TCP 连接的排空时间（毫秒）；0 = 立即断开
+drain_timeout_ms = 10000
+# UDP 会话空闲回收时间（毫秒）
+udp_session_timeout_ms = 60000
+# 热切换时是否把已有 UDP 会话重绑到新的主节点
+udp_rebind_on_switch = true
+# 所有节点都不健康时，是否仍然按优先级兜底转发（fail-open，避免整体黑洞）
+fail_open = true
+# 退出时等待在途连接收尾的时间（毫秒）
+shutdown_grace_ms = 5000
+
+# -----------------------------------------------------------------------------
+# 对外统一入口，可配多个。注意同一 (protocol, listen) 不能重复。
+# -----------------------------------------------------------------------------
+[[listeners]]
+name = "tcp-public"
+protocol = "tcp"
+listen = "0.0.0.0:9000"
+
+[[listeners]]
+name = "udp-public"
+protocol = "udp"
+listen = "0.0.0.0:9000"
+
+# -----------------------------------------------------------------------------
+# 后端节点（主备候选）。至少配置 tcp / udp 之一。
+# -----------------------------------------------------------------------------
+[[nodes]]
+name = "node-a"                 # 唯一名称
+enabled = true                  # 可在线 enable/disable（控制口）
+priority = 100                  # 越大越优先 → 主节点
+weight = 1                      # weighted 策略下的权重
+tcp = "10.0.0.11:9000"          # TCP 后端地址（可省略）
+udp = "10.0.0.11:9000"          # UDP 后端地址（可省略）
+probe = "auto"                  # auto | tcp | udp | none
+probe_payload = ""              # 探测载荷：普通文本，或 "hex:0A0D" 形式；留空=仅连接探测
+probe_expect = ""               # 期望响应包含的字符串，留空=任何响应都算成功
+remark = "机房 A / 主节点"
+
+[[nodes]]
+name = "node-b"
+enabled = true
+priority = 50
+weight = 1
+tcp = "10.0.0.12:9000"
+udp = "10.0.0.12:9000"
+probe = "auto"
+remark = "机房 B / 备节点"
+
+# 只提供 UDP 服务的节点示例：
+# [[nodes]]
+# name = "node-c"
+# priority = 10
+# udp = "10.0.0.13:9000"
+# probe = "udp"
+# probe_payload = "PING"
+# probe_expect = "PONG"

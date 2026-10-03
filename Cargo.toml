@@ -1,0 +1,32 @@
+[package]
+name = "sniffgate"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "多节点嗅探主备热切换网关：对外统一 TCP/UDP 入口，后端多节点健康嗅探、主备秒级热切换、配置文件在线热加载"
+license = "MIT"
+repository = "https://github.com/yxpil/sniffgate"
+readme = "README.md"
+keywords = ["proxy", "failover", "tcp", "udp", "high-availability"]
+categories = ["network-programming", "command-line-utilities"]
+
+[[bin]]
+name = "sniffgate"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync", "signal"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+arc-swap = "1"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "unwind"

@@ -1,0 +1,36 @@
+<!--
+  WinSW 服务配置示例：把 sniffgate 注册为 Windows 服务
+  1. 下载 WinSW：https://github.com/winsw/winsw/releases
+  2. 重命名为 sniffgate-service.exe，与 sniffgate.exe 放在同一目录
+  3. 本文件重命名为 sniffgate-service.xml，按需修改路径
+  4. 管理员 PowerShell：
+       .\sniffgate-service.exe install
+       .\sniffgate-service.exe start
+       .\sniffgate-service.exe status
+-->
+<service>
+  <id>sniffgate</id>
+  <name>sniffgate (多节点嗅探主备热切换网关)</name>
+  <description>对外统一 TCP/UDP 入口，后端多节点健康嗅探与主备热切换；支持配置文件热加载。</description>
+
+  <executable>C:\sniffgate\sniffgate.exe</executable>
+  <arguments>--config C:\sniffgate\config.toml --log info</arguments>
+  <workingdirectory>C:\sniffgate</workingdirectory>
+
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <stoptimeout>15 sec</stoptimeout>
+
+  <onfailure action="restart" delay="5 sec" />
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <resetfailure>1 hour</resetfailure>
+
+  <log mode="roll-by-size">
+    <logpath>C:\sniffgate\logs</logpath>
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+
+  <env name="RUST_BACKTRACE" value="1" />
+</service>

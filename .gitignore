@@ -1,0 +1,18 @@
+# 构建产物
+/target
+**/*.rs.bk
+
+# 本地真实配置（示例配置 config.example.toml 会入库）
+config.toml
+config.local.toml
+
+# 日志与运行时文件
+*.log
+logs/
+*.pid
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
