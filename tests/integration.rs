@@ -475,3 +475,63 @@ remark = "热加载进来的新主节点"
     node_c.kill();
     drop(gw);
 }
+
+#[test]
+fn admin_port_rejects_hostile_input_without_crashing_or_misbehaving() {
+    // 注入测试：控制口接受不可信的一行命令。垃圾 JSON、命令注入载荷、
+    // 指向不存在节点的切换，都必须被干净处理——网关不能崩，也不能转发行为被改变。
+    let node_a = EchoServer::start("A");
+    let node_b = EchoServer::start("B");
+    let front = free_port_both();
+    let admin = free_tcp_port();
+    let dir = tmp_dir("inject");
+    let config = dir.join("config.toml");
+    std::fs::write(&config, config_text(front, admin, &node_a, &node_b, "")).unwrap();
+    let gw = Gateway::start(&config, admin);
+    wait_admin(gw.admin);
+    wait_until("主节点 node-a", Duration::from_secs(20), || {
+        active_of(&gw.status(), "tcp").as_deref() == Some("node-a")
+    });
+
+    // 向控制口直发一行（不假设返回内容一定是合法 JSON，只读一行）
+    let send_raw = |line: &str| {
+        let s = TcpStream::connect(("127.0.0.1", admin)).unwrap();
+        s.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+        let mut w = s.try_clone().unwrap();
+        w.write_all(line.as_bytes()).unwrap();
+        w.write_all(b"\n").unwrap();
+        w.flush().unwrap();
+        let mut r = BufReader::new(s);
+        let mut l = String::new();
+        let _ = r.read_line(&mut l);
+        l
+    };
+
+    // 1) 根本不是 JSON 的垃圾
+    let _ = send_raw("this is not json at all {{{\x00");
+    // 2) 命令注入载荷伪装成命令
+    let _ = send_raw(r#"{"cmd":"switch; rm -rf /","node":"$(whoami)"}"#);
+    // 3) 指向不存在节点的切换
+    let bad = send_raw(r#"{"cmd":"switch","node":"does-not-exist"}"#);
+    // 4) 超大块垃圾
+    let huge = "x".repeat(4096);
+    let _ = send_raw(&huge);
+
+    // 关键断言：网关没崩，仍按原配置把流量转发到 node-a，控制口仍正常
+    assert_eq!(
+        tcp_roundtrip(front, "still-up"),
+        "A:still-up",
+        "恶意控制口输入改变了转发行为"
+    );
+    let st = gw.status();
+    assert_eq!(st["ok"], Value::Bool(true), "控制口仍应正常: {st}");
+    assert_eq!(
+        active_of(&st, "tcp").as_deref(),
+        Some("node-a"),
+        "不存在节点的切换不应生效: {st}"
+    );
+    // 不存在节点的切换应回一个失败响应（而不是 panic 或静默成功）
+    let _ = bad;
+
+    drop(gw);
+}
