@@ -337,3 +337,15 @@ src/
 ## License
 
 MIT © 2026 yxpil
+
+---
+
+<div align="center">
+
+<a href="https://github.com/yxpil/sniffgate">
+  <img width="100%" src="https://alittlecatgirlpanel.yxp.hk/card?repo=yxpil/sniffgate" alt="gh-card · yxpil/sniffgate" />
+</a>
+
+<sub>Powered by <a href="https://alittlecatgirlpanel.yxp.hk"><b>gh-card</b></a> · 粉色手写体 README 仓库名片</sub>
+
+</div>
